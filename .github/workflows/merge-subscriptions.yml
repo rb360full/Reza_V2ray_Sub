@@ -31,7 +31,7 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: npm install p-queue
+        run: npm install
 
       - name: Run merge and validation script
         run: npm run merge
