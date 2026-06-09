@@ -2,15 +2,8 @@
   "localFilesCount": 1,
   "remoteUrlsCount": 26,
   "totalImportedLines": 1556,
-<<<<<<< HEAD
-  "uniqueLines": 1472,
-  "duplicateLinesRemoved": 46,
-  "executionTimeMs": 3637,
-  "generatedAt": "2026-06-09T13:26:02.941Z"
-=======
-  "uniqueLines": 1473,
-  "duplicateLinesRemoved": 45,
-  "executionTimeMs": 857,
-  "generatedAt": "2026-06-09T13:23:02.428Z"
->>>>>>> dd4e98b72f997a8020370d9efde9cb8aaa71d5ad
+  "uniqueLines": 1460,
+  "duplicateLinesRemoved": 58,
+  "executionTimeMs": 712,
+  "generatedAt": "2026-06-09T13:36:58.778Z"
 }
