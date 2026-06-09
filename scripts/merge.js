@@ -14,6 +14,34 @@ const REPORT_PATH = path.join(OUTPUT_DIR, 'report.json');
 const HEALTH_REPORT_PATH = path.join(OUTPUT_DIR, 'health-report.json');
 const BAD_CONFIGS_PATH = path.join(OUTPUT_DIR, 'bad_configs.txt');
 
+// Runtime diagnostics and environment checks
+try {
+  console.log('Runtime diagnostics:');
+  console.log('  Node version:', process.version);
+  console.log('  Working dir:', process.cwd());
+  console.log('  ENV VARS: TCP_TIMEOUT_MS=', process.env.TCP_TIMEOUT_MS, 'VALIDATION_CONCURRENCY=', process.env.VALIDATION_CONCURRENCY);
+  const { execSync } = require('child_process');
+  try {
+    const gitBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
+    console.log('  Git branch:', gitBranch);
+  } catch (e) {
+    console.log('  Git branch: (unable to determine)');
+  }
+} catch (diagError) {
+  console.warn('Runtime diagnostics failed:', diagError && diagError.message);
+}
+
+// Ensure fetch is available (Node 18+). If not, try to polyfill with node-fetch for runner compatibility.
+if (typeof fetch !== 'function') {
+  try {
+    // eslint-disable-next-line global-require
+    const nodeFetch = require('node-fetch');
+    global.fetch = nodeFetch;
+    console.log('Polyfilled global.fetch using node-fetch');
+  } catch (e) {
+    console.warn('fetch is not available and node-fetch could not be loaded:', e.message);
+  }
+}
 /**
  * Read all local .txt files from the configs folder and return every line.
  */
