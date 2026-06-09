@@ -5,11 +5,16 @@ const { validateConfigurations } = require('./validation');
 const ROOT_DIR = path.resolve(__dirname, '..');
 const CONFIG_DIR = path.join(ROOT_DIR, 'configs');
 const SUB_LINKS_PATH = path.join(ROOT_DIR, 'Sub Links.txt');
+const SUB_LINKS2_PATH = path.join(ROOT_DIR, 'Sub Links2.txt');
 const OUTPUT_DIR = path.join(ROOT_DIR, 'output');
 const MERGED_ROOT_PATH = path.join(ROOT_DIR, 'merged.txt');
 const MERGED_OUTPUT_PATH = path.join(OUTPUT_DIR, 'merged.txt');
 const MERGED_CHECKED_ROOT_PATH = path.join(ROOT_DIR, 'merged_checked.txt');
 const MERGED_CHECKED_OUTPUT_PATH = path.join(OUTPUT_DIR, 'merged_checked.txt');
+const MERGED2_ROOT_PATH = path.join(ROOT_DIR, 'merged2.txt');
+const MERGED2_OUTPUT_PATH = path.join(OUTPUT_DIR, 'merged2.txt');
+const MERGED_CHECKED2_ROOT_PATH = path.join(ROOT_DIR, 'merged_checked2.txt');
+const MERGED_CHECKED2_OUTPUT_PATH = path.join(OUTPUT_DIR, 'merged_checked2.txt');
 const REPORT_PATH = path.join(OUTPUT_DIR, 'report.json');
 const HEALTH_REPORT_PATH = path.join(OUTPUT_DIR, 'health-report.json');
 const BAD_CONFIGS_PATH = path.join(OUTPUT_DIR, 'bad_configs.txt');
@@ -137,6 +142,65 @@ async function loadRemoteSubscriptions() {
 }
 
 /**
+ * Load remote subscriptions from a specific Sub Links file path.
+ */
+async function loadRemoteSubscriptionsFrom(filePath, label) {
+  try {
+    const rawContent = await fs.readFile(filePath, 'utf8');
+    const urls = rawContent
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith('#'));
+
+    console.log(`Found ${urls.length} remote subscription URL(s) in ${label || filePath}.`);
+
+    const fetchResults = await Promise.allSettled(
+      urls.map(async (url) => {
+        try {
+          const response = await fetch(url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (GitHub Actions) V2Ray Subscription Aggregator',
+            },
+            redirect: 'follow',
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status} ${response.statusText}`);
+          }
+
+          const content = await response.text();
+          const remoteLines = content.split(/\r?\n/);
+          console.log(`Downloaded ${remoteLines.length} lines from: ${url}`);
+          return remoteLines;
+        } catch (fetchError) {
+          console.error(`Failed to download ${url}: ${fetchError.message}`);
+          return [];
+        }
+      })
+    );
+
+    const lines = fetchResults.reduce((acc, result) => {
+      if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+        acc.push(...result.value);
+      }
+      return acc;
+    }, []);
+
+    return {
+      remoteUrlsCount: urls.length,
+      lines,
+    };
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      console.warn(`Warning: ${filePath} not found. No remote subscriptions loaded from ${label || filePath}.`);
+      return { remoteUrlsCount: 0, lines: [] };
+    }
+
+    throw error;
+  }
+}
+
+/**
  * Normalize lines by trimming whitespace and removing empty or comment lines.
  */
 function normalizeLines(lines) {
@@ -255,6 +319,29 @@ async function saveOutputs(lines, healthyLines, badConfigs, statistics, healthRe
 }
 
 /**
+ * Save outputs to alternate file names (used for merged2/merged_checked2)
+ */
+async function saveOutputsVariant(lines, healthyLines, mergedRootPath, mergedOutputPath, checkedRootPath, checkedOutputPath, badConfigsPath) {
+  await fs.mkdir(OUTPUT_DIR, { recursive: true });
+
+  const mergedContent = lines.join('\n') + (lines.length > 0 ? '\n' : '');
+  const healthyContent = healthyLines.join('\n') + (healthyLines.length > 0 ? '\n' : '');
+
+  await Promise.all([
+    fs.writeFile(mergedRootPath, mergedContent, 'utf8'),
+    fs.writeFile(mergedOutputPath, mergedContent, 'utf8'),
+    fs.writeFile(checkedRootPath, healthyContent, 'utf8'),
+    fs.writeFile(checkedOutputPath, healthyContent, 'utf8'),
+    fs.writeFile(badConfigsPath, '', 'utf8').catch(() => {}),
+  ]);
+
+  console.log(`Saved merged subscription to: ${mergedRootPath}`);
+  console.log(`Saved merged subscription to: ${mergedOutputPath}`);
+  console.log(`Saved healthy configurations to: ${checkedRootPath}`);
+  console.log(`Saved healthy configurations to: ${checkedOutputPath}`);
+}
+
+/**
  * Main workflow: load, normalize, deduplicate, validate, save, and report.
  */
 async function run() {
@@ -320,6 +407,56 @@ async function run() {
   console.log(`\nTotal execution time: ${totalDuration}ms`);
 
   await saveOutputs(uniqueLines, results.healthy, badConfigs, statistics, healthReport);
+
+  // --- Second pipeline: process Sub Links2.txt into merged2 / merged_checked2 ---
+  try {
+    console.log('\nStarting second pipeline using Sub Links2.txt (merged2/merged_checked2)...');
+
+    const remote2 = await loadRemoteSubscriptionsFrom(SUB_LINKS2_PATH, 'Sub Links2.txt');
+    const importedLines2 = local.lines.length + remote2.lines.length;
+
+    const normalized2 = normalizeLines([...local.lines, ...remote2.lines]);
+    const { uniqueLines: uniqueLines2, duplicateLinesRemoved: duplicateLinesRemoved2 } = removeDuplicates(normalized2);
+
+    const statistics2 = generateStatistics({
+      localFilesCount: local.localFilesCount,
+      remoteUrlsCount: remote2.remoteUrlsCount,
+      importedLines: importedLines2,
+      uniqueLinesCount: uniqueLines2.length,
+      duplicateLinesRemoved: duplicateLinesRemoved2,
+      durationMs: Date.now() - startTime,
+    });
+
+    console.log('\n=== Merge Summary (Sub Links2) ===');
+    console.log(`Local files: ${local.localFilesCount}`);
+    console.log(`Remote URLs: ${remote2.remoteUrlsCount}`);
+    console.log(`Imported lines: ${importedLines2}`);
+    console.log(`Unique lines: ${uniqueLines2.length}`);
+    console.log(`Duplicates removed: ${duplicateLinesRemoved2}`);
+
+    console.log('\n=== Starting Validation Pipeline (Sub Links2) ===');
+    const validationStartTime2 = Date.now();
+    const { stats: stats2, results: results2 } = await validateConfigurations(uniqueLines2);
+    const validationDuration2 = Date.now() - validationStartTime2;
+
+    const healthReport2 = generateHealthReport({
+      stats: stats2,
+      totalHealthy: results2.healthy.length,
+      durationMs: validationDuration2,
+    });
+
+    const badConfigs2 = [
+      ...results2.failed_syntax,
+      ...results2.failed_decode,
+      ...results2.failed_required_fields,
+      ...results2.failed_dns,
+      ...results2.failed_tcp,
+    ];
+
+    await saveOutputsVariant(uniqueLines2, results2.healthy, MERGED2_ROOT_PATH, MERGED2_OUTPUT_PATH, MERGED_CHECKED2_ROOT_PATH, MERGED_CHECKED2_OUTPUT_PATH, BAD_CONFIGS_PATH.replace('.txt', '_2.txt'));
+  } catch (e) {
+    console.error('Second pipeline failed:', e && e.message ? e.message : e);
+  }
 }
 
 run().catch((error) => {
