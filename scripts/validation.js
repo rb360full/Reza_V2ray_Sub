@@ -51,7 +51,12 @@ function validateSyntax(line) {
 function validateDecode(line) {
   try {
     if (line.toLowerCase().startsWith('vmess://') || line.toLowerCase().startsWith('vless://')) {
-      const base64Part = line.split('://')[1];
+      // Extract the payload portion and strip URL params and fragment (# or ?)
+      let base64Part = line.split('://')[1] || '';
+      const hashIndex = base64Part.indexOf('#');
+      if (hashIndex !== -1) base64Part = base64Part.slice(0, hashIndex);
+      const qIndex = base64Part.indexOf('?');
+      if (qIndex !== -1) base64Part = base64Part.slice(0, qIndex);
       if (!base64Part) {
         return { valid: false, reason: 'No payload after protocol' };
       }
@@ -85,7 +90,12 @@ function validateDecode(line) {
 function validateRequiredFields(line) {
   try {
     if (line.toLowerCase().startsWith('vmess://') || line.toLowerCase().startsWith('vless://')) {
-      const base64Part = line.split('://')[1];
+      // Extract payload and strip URL params/fragments
+      let base64Part = line.split('://')[1] || '';
+      const hashIndex2 = base64Part.indexOf('#');
+      if (hashIndex2 !== -1) base64Part = base64Part.slice(0, hashIndex2);
+      const qIndex2 = base64Part.indexOf('?');
+      if (qIndex2 !== -1) base64Part = base64Part.slice(0, qIndex2);
       const decoded = Buffer.from(base64Part, 'base64').toString('utf8');
       const config = JSON.parse(decoded);
 
