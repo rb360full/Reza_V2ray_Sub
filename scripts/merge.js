@@ -321,18 +321,21 @@ async function saveOutputs(lines, healthyLines, badConfigs, statistics, healthRe
 /**
  * Save outputs to alternate file names (used for merged2/merged_checked2)
  */
-async function saveOutputsVariant(lines, healthyLines, mergedRootPath, mergedOutputPath, checkedRootPath, checkedOutputPath, badConfigsPath) {
+async function saveOutputsVariant(lines, mergedRootPath, mergedOutputPath, checkedRootPath, checkedOutputPath, healthyLines, badConfigs, badConfigsPath) {
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
 
   const mergedContent = lines.join('\n') + (lines.length > 0 ? '\n' : '');
   const healthyContent = healthyLines.join('\n') + (healthyLines.length > 0 ? '\n' : '');
+  const badConfigsContent = badConfigs
+    .map((item) => `${item.line} # ${item.reason}`)
+    .join('\n') + (badConfigs.length > 0 ? '\n' : '');
 
   await Promise.all([
     fs.writeFile(mergedRootPath, mergedContent, 'utf8'),
     fs.writeFile(mergedOutputPath, mergedContent, 'utf8'),
     fs.writeFile(checkedRootPath, healthyContent, 'utf8'),
     fs.writeFile(checkedOutputPath, healthyContent, 'utf8'),
-    fs.writeFile(badConfigsPath, '', 'utf8').catch(() => {}),
+    fs.writeFile(badConfigsPath, badConfigsContent, 'utf8'),
   ]);
 
   console.log(`Saved merged subscription to: ${mergedRootPath}`);
@@ -453,7 +456,7 @@ async function run() {
       ...results2.failed_tcp,
     ];
 
-    await saveOutputsVariant(uniqueLines2, results2.healthy, MERGED2_ROOT_PATH, MERGED2_OUTPUT_PATH, MERGED_CHECKED2_ROOT_PATH, MERGED_CHECKED2_OUTPUT_PATH, BAD_CONFIGS_PATH.replace('.txt', '_2.txt'));
+    await saveOutputsVariant(uniqueLines2, MERGED2_ROOT_PATH, MERGED2_OUTPUT_PATH, MERGED_CHECKED2_ROOT_PATH, MERGED_CHECKED2_OUTPUT_PATH, results2.healthy, badConfigs2, BAD_CONFIGS_PATH.replace('.txt', '_2.txt'));
   } catch (e) {
     console.error('Second pipeline failed:', e && e.message ? e.message : e);
   }

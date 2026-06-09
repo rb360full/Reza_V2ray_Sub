@@ -47,7 +47,7 @@ jobs:
         run: |
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git add merged.txt output/merged.txt merged_checked.txt output/merged_checked.txt output/report.json output/health-report.json output/bad_configs.txt
+          git add merged.txt output/merged.txt merged_checked.txt output/merged_checked.txt merged2.txt output/merged2.txt merged_checked2.txt output/merged_checked2.txt output/report.json output/health-report.json output/bad_configs.txt output/bad_configs_2.txt
           echo "--- git status after add ---"
           git status --short
           if git diff --cached --quiet; then
