@@ -1,0 +1,7 @@
+# Add one remote V2Ray subscription URL per line.
+# Lines starting with # or empty lines are ignored.
+# Example:
+# https://raw.githubusercontent.com/username/repo/main/subscription.txt
+# https://example.com/v2ray/subscription.txt
+https://raw.githubusercontent.com/V2RAYCONFIGSPOOL/V2RAY_SUB/refs/heads/main/v2ray_configs_no1.txt
+https://raw.githubusercontent.com/V2RAYCONFIGSPOOL/V2RAY_SUB/refs/heads/main/v2ray_configs_no2.txt

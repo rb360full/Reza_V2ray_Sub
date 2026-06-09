@@ -1,0 +1,15 @@
+{
+  "name": "reza_v2ray_sub",
+  "version": "1.0.0",
+  "description": "Self-hosted V2Ray subscription aggregator for GitHub Actions and GitHub Pages/Raw URLs.",
+  "main": "scripts/merge.js",
+  "type": "commonjs",
+  "scripts": {
+    "merge": "node scripts/merge.js"
+  },
+  "author": "Reza",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,9 @@
+# Example local V2Ray subscription entries.
+# Add one subscription line per row.
+# Empty lines and duplicate lines are removed automatically.
+# Example:
+# vmess://example-base64-encoded-text
+
+
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTprMWRCT21PQjRvcWk3VW1wMzdhMWJR@82.38.31.184:8080?#%F0%9F%94%A5PORTAL%20Telegram%3A%40STR_BYPASS%F0%9F%9F%A3
+trojan://A3uIh_5NqMg3hFa.gDYWT.afz0UuJ6%3DVIM@172.237.145.189:443?security=tls&sni=172.237.145.189&fp=chrome&insecure=0&allowInsecure=0&type=tcp&headerType=none#79.%20%F0%9F%87%BA%F0%9F%87%B8%20United%20States
