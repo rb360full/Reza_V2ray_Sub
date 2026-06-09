@@ -48,11 +48,31 @@ function validateSyntax(line) {
  * Stage 2: Decode validation
  * Attempt to decode base64 payload if it's a vmess/vless configuration.
  */
+function parseVlessOrUrlConfig(line) {
+  try {
+    const parsed = new URL(line);
+    if (!parsed.hostname) {
+      return null;
+    }
+
+    return {
+      add: parsed.hostname,
+      port: parsed.port,
+      protocol: parsed.protocol.replace(':', ''),
+      params: parsed.searchParams,
+      username: parsed.username,
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
 function validateDecode(line) {
   try {
-    if (line.toLowerCase().startsWith('vmess://') || line.toLowerCase().startsWith('vless://')) {
+    const normalizedLine = line.trim();
+    if (normalizedLine.toLowerCase().startsWith('vmess://')) {
       // Extract the payload portion and strip URL params and fragment (# or ?)
-      let base64Part = line.split('://')[1] || '';
+      let base64Part = normalizedLine.split('://')[1] || '';
       const hashIndex = base64Part.indexOf('#');
       if (hashIndex !== -1) base64Part = base64Part.slice(0, hashIndex);
       const qIndex = base64Part.indexOf('?');
@@ -61,13 +81,11 @@ function validateDecode(line) {
         return { valid: false, reason: 'No payload after protocol' };
       }
 
-      // Try to decode as base64
       const decoded = Buffer.from(base64Part, 'base64').toString('utf8');
       if (!decoded || decoded.length < 2) {
         return { valid: false, reason: 'Failed to decode base64 payload' };
       }
 
-      // Try to parse as JSON
       try {
         JSON.parse(decoded);
       } catch (e) {
@@ -75,6 +93,14 @@ function validateDecode(line) {
       }
 
       return { valid: true, reason: 'Decode OK' };
+    }
+
+    if (normalizedLine.toLowerCase().startsWith('vless://')) {
+      const parsed = parseVlessOrUrlConfig(normalizedLine);
+      if (!parsed || !parsed.port) {
+        return { valid: false, reason: 'Invalid VLESS URI format' };
+      }
+      return { valid: true, reason: 'Decode OK (VLESS URI)' };
     }
 
     return { valid: true, reason: 'Decode OK (non-JSON protocol)' };
@@ -89,9 +115,10 @@ function validateDecode(line) {
  */
 function validateRequiredFields(line) {
   try {
-    if (line.toLowerCase().startsWith('vmess://') || line.toLowerCase().startsWith('vless://')) {
-      // Extract payload and strip URL params/fragments
-      let base64Part = line.split('://')[1] || '';
+    const normalizedLine = line.trim();
+
+    if (normalizedLine.toLowerCase().startsWith('vmess://')) {
+      let base64Part = normalizedLine.split('://')[1] || '';
       const hashIndex2 = base64Part.indexOf('#');
       if (hashIndex2 !== -1) base64Part = base64Part.slice(0, hashIndex2);
       const qIndex2 = base64Part.indexOf('?');
@@ -99,7 +126,6 @@ function validateRequiredFields(line) {
       const decoded = Buffer.from(base64Part, 'base64').toString('utf8');
       const config = JSON.parse(decoded);
 
-      // Check for required fields
       const requiredFields = ['add', 'port'];
       for (const field of requiredFields) {
         if (!config[field]) {
@@ -110,8 +136,25 @@ function validateRequiredFields(line) {
       return { valid: true, reason: 'Required fields OK', config };
     }
 
-    // For other protocols, basic validation
-    if (line.toLowerCase().includes('://')) {
+    if (normalizedLine.toLowerCase().startsWith('vless://')) {
+      const parsed = parseVlessOrUrlConfig(normalizedLine);
+      if (!parsed) {
+        return { valid: false, reason: 'Invalid VLESS URI format', config: null };
+      }
+
+      if (!parsed.add || !parsed.port) {
+        return { valid: false, reason: 'Missing hostname or port in VLESS URI', config: null };
+      }
+
+      return { valid: true, reason: 'Required fields OK', config: parsed };
+    }
+
+    if (normalizedLine.toLowerCase().includes('://')) {
+      const parsed = parseVlessOrUrlConfig(normalizedLine);
+      if (parsed && parsed.add && parsed.port) {
+        return { valid: true, reason: 'Required fields OK (URI protocol)', config: parsed };
+      }
+
       return { valid: true, reason: 'Required fields OK (non-JSON protocol)', config: null };
     }
 
