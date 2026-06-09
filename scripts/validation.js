@@ -1,7 +1,8 @@
 const { promisify } = require('util');
 const { resolve4, resolve6 } = require('dns');
 const net = require('net');
-const PQueue = require('p-queue').default;
+// p-queue is an ES module; import dynamically inside async functions to remain
+// compatible with CommonJS execution in GitHub Actions runners.
 
 /**
  * Configuration validation pipeline with staged execution.
@@ -282,6 +283,7 @@ async function validateConfigurations(lines) {
 
   // Stage 4: DNS Validation (with concurrency pool)
   console.log(`\n[Stage 4] Validating DNS for ${stage3Configs.length} configurations...`);
+  const { default: PQueue } = await import('p-queue');
   const dnsQueue = new PQueue({ concurrency: VALIDATION_CONCURRENCY });
   const stage4Results = [];
 
@@ -307,7 +309,8 @@ async function validateConfigurations(lines) {
 
   // Stage 5: TCP Validation (only for DNS-passing configs, with concurrency pool)
   console.log(`\n[Stage 5] Validating TCP for ${stage4Results.length} configurations...`);
-  const tcpQueue = new PQueue({ concurrency: VALIDATION_CONCURRENCY });
+  const { default: PQueue2 } = await import('p-queue');
+  const tcpQueue = new PQueue2({ concurrency: VALIDATION_CONCURRENCY });
 
   const tcpPromises = stage4Results.map((item) =>
     tcpQueue.add(async () => {
