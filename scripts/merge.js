@@ -1,5 +1,6 @@
 const fs = require('fs/promises');
 const path = require('path');
+const { validateConfigurations } = require('./validation');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const CONFIG_DIR = path.join(ROOT_DIR, 'configs');
@@ -7,7 +8,11 @@ const SUB_LINKS_PATH = path.join(ROOT_DIR, 'Sub Links.txt');
 const OUTPUT_DIR = path.join(ROOT_DIR, 'output');
 const MERGED_ROOT_PATH = path.join(ROOT_DIR, 'merged.txt');
 const MERGED_OUTPUT_PATH = path.join(OUTPUT_DIR, 'merged.txt');
+const MERGED_CHECKED_ROOT_PATH = path.join(ROOT_DIR, 'merged_checked.txt');
+const MERGED_CHECKED_OUTPUT_PATH = path.join(OUTPUT_DIR, 'merged_checked.txt');
 const REPORT_PATH = path.join(OUTPUT_DIR, 'report.json');
+const HEALTH_REPORT_PATH = path.join(OUTPUT_DIR, 'health-report.json');
+const BAD_CONFIGS_PATH = path.join(OUTPUT_DIR, 'bad_configs.txt');
 
 /**
  * Read all local .txt files from the configs folder and return every line.
@@ -149,30 +154,85 @@ function generateStatistics({ localFilesCount, remoteUrlsCount, importedLines, u
 }
 
 /**
+ * Build the health report object with validation stage statistics.
+ */
+function generateHealthReport({ stats, totalHealthy, durationMs }) {
+  return {
+    validationStages: {
+      stage1_syntax: {
+        name: 'Syntax Validation',
+        passed: stats.stage1_syntax,
+      },
+      stage2_decode: {
+        name: 'Decode Validation',
+        passed: stats.stage2_decode,
+      },
+      stage3_required_fields: {
+        name: 'Required Fields Validation',
+        passed: stats.stage3_required_fields,
+      },
+      stage4_dns: {
+        name: 'DNS Validation',
+        passed: stats.stage4_dns,
+      },
+      stage5_tcp: {
+        name: 'TCP Validation',
+        passed: stats.stage5_tcp,
+      },
+    },
+    summary: {
+      totalConfigurations: stats.total,
+      healthyConfigurations: totalHealthy,
+      failedSyntax: stats.total - stats.stage1_syntax,
+      failedDecode: stats.stage1_syntax - stats.stage2_decode,
+      failedRequiredFields: stats.stage2_decode - stats.stage3_required_fields,
+      failedDNS: stats.stage3_required_fields - stats.stage4_dns,
+      failedTCP: stats.stage4_dns - stats.stage5_tcp,
+      healthRate: ((totalHealthy / stats.total) * 100).toFixed(2) + '%',
+    },
+    executionTimeMs: durationMs,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+/**
  * Save merged output files to the repository root and output folder.
  */
-async function saveOutputs(lines, statistics) {
+async function saveOutputs(lines, healthyLines, badConfigs, statistics, healthReport) {
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
 
   const mergedContent = lines.join('\n') + (lines.length > 0 ? '\n' : '');
+  const healthyContent = healthyLines.join('\n') + (healthyLines.length > 0 ? '\n' : '');
+  const badConfigsContent = badConfigs
+    .map((item) => `${item.line} # ${item.reason}`)
+    .join('\n') + (badConfigs.length > 0 ? '\n' : '');
+
   await Promise.all([
     fs.writeFile(MERGED_ROOT_PATH, mergedContent, 'utf8'),
     fs.writeFile(MERGED_OUTPUT_PATH, mergedContent, 'utf8'),
+    fs.writeFile(MERGED_CHECKED_ROOT_PATH, healthyContent, 'utf8'),
+    fs.writeFile(MERGED_CHECKED_OUTPUT_PATH, healthyContent, 'utf8'),
     fs.writeFile(REPORT_PATH, JSON.stringify(statistics, null, 2) + '\n', 'utf8'),
+    fs.writeFile(HEALTH_REPORT_PATH, JSON.stringify(healthReport, null, 2) + '\n', 'utf8'),
+    fs.writeFile(BAD_CONFIGS_PATH, badConfigsContent, 'utf8'),
   ]);
 
   console.log(`Saved merged subscription to: ${MERGED_ROOT_PATH}`);
   console.log(`Saved merged subscription to: ${MERGED_OUTPUT_PATH}`);
+  console.log(`Saved healthy configurations to: ${MERGED_CHECKED_ROOT_PATH}`);
+  console.log(`Saved healthy configurations to: ${MERGED_CHECKED_OUTPUT_PATH}`);
   console.log(`Saved statistics report to: ${REPORT_PATH}`);
+  console.log(`Saved health report to: ${HEALTH_REPORT_PATH}`);
+  console.log(`Saved bad configurations to: ${BAD_CONFIGS_PATH}`);
 }
 
 /**
- * Main workflow: load, normalize, deduplicate, save, and report.
+ * Main workflow: load, normalize, deduplicate, validate, save, and report.
  */
 async function run() {
   const startTime = Date.now();
 
-  console.log('Starting V2Ray subscription merge process...');
+  console.log('Starting V2Ray subscription merge and validation process...\n');
 
   const local = await loadLocalConfigs();
   const remote = await loadRemoteSubscriptions();
@@ -190,17 +250,52 @@ async function run() {
     durationMs: Date.now() - startTime,
   });
 
-  console.log('Merge completed.');
+  console.log('\n=== Merge Summary ===');
+  console.log(`Local files: ${local.localFilesCount}`);
+  console.log(`Remote URLs: ${remote.remoteUrlsCount}`);
   console.log(`Imported lines: ${importedLines}`);
   console.log(`Unique lines: ${uniqueLines.length}`);
-  console.log(`Duplicate lines removed: ${duplicateLinesRemoved}`);
-  console.log(`Execution time: ${statistics.executionTimeMs}ms`);
+  console.log(`Duplicates removed: ${duplicateLinesRemoved}`);
 
-  await saveOutputs(uniqueLines, statistics);
+  // Validation stage
+  console.log('\n=== Starting Validation Pipeline ===');
+  const validationStartTime = Date.now();
+  const { stats, results } = await validateConfigurations(uniqueLines);
+  const validationDuration = Date.now() - validationStartTime;
+
+  const healthReport = generateHealthReport({
+    stats,
+    totalHealthy: results.healthy.length,
+    durationMs: validationDuration,
+  });
+
+  console.log('\n=== Validation Summary ===');
+  console.log(`Total configurations: ${stats.total}`);
+  console.log(`Passed Stage 1 (Syntax): ${stats.stage1_syntax}`);
+  console.log(`Passed Stage 2 (Decode): ${stats.stage2_decode}`);
+  console.log(`Passed Stage 3 (Required Fields): ${stats.stage3_required_fields}`);
+  console.log(`Passed Stage 4 (DNS): ${stats.stage4_dns}`);
+  console.log(`Passed Stage 5 (TCP): ${stats.stage5_tcp}`);
+  console.log(`Health Rate: ${healthReport.summary.healthRate}`);
+  console.log(`Validation Time: ${validationDuration}ms`);
+
+  // Collect all failed configurations for bad_configs.txt
+  const badConfigs = [
+    ...results.failed_syntax,
+    ...results.failed_decode,
+    ...results.failed_required_fields,
+    ...results.failed_dns,
+    ...results.failed_tcp,
+  ];
+
+  const totalDuration = Date.now() - startTime;
+  console.log(`\nTotal execution time: ${totalDuration}ms`);
+
+  await saveOutputs(uniqueLines, results.healthy, badConfigs, statistics, healthReport);
 }
 
 run().catch((error) => {
-  console.error('Subscription merge failed:', error instanceof Error ? error.message : error);
+  console.error('Subscription merge and validation failed:', error instanceof Error ? error.message : error);
   if (error && error.stack) {
     console.error(error.stack);
   }

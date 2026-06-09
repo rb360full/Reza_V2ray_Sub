@@ -1,16 +1,22 @@
-name: Merge V2Ray Subscriptions
+name: Merge and Validate V2Ray Subscriptions
 
 on:
   schedule:
-    - cron: '*/59 * * * *'
+    - cron: '0 0,12 * * *'
   workflow_dispatch: {}
 
 jobs:
-  merge-subscriptions:
+  merge-and-validate:
     runs-on: ubuntu-latest
 
     permissions:
       contents: write
+
+    env:
+      TCP_TIMEOUT_MS: 2000
+      DNS_RETRIES: 1
+      TCP_RETRIES: 1
+      VALIDATION_CONCURRENCY: 50
 
     steps:
       - name: Checkout repository
@@ -25,12 +31,12 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: npm install
+        run: npm install p-queue
 
-      - name: Run merge script
+      - name: Run merge and validation script
         run: npm run merge
 
-      - name: Show repository status after merge
+      - name: Show repository status after validation
         run: |
           echo "--- git status ---"
           git status --short
@@ -41,12 +47,12 @@ jobs:
         run: |
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git add merged.txt output/merged.txt output/report.json
+          git add merged.txt output/merged.txt merged_checked.txt output/merged_checked.txt output/report.json output/health-report.json output/bad_configs.txt
           echo "--- git status after add ---"
           git status --short
           if git diff --cached --quiet; then
-            echo "No merged changes detected; nothing to commit."
+            echo "No changes detected; nothing to commit."
             exit 0
           fi
-          git commit -m "Update merged V2Ray subscriptions [ci skip]"
+          git commit -m "Update V2Ray subscriptions and validation reports [ci skip]"
           git push origin HEAD
