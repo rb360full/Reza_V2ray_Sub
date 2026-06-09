@@ -18,19 +18,19 @@
     },
     "stage5_tcp": {
       "name": "TCP Validation",
-      "passed": 1162
+      "passed": 1186
     }
   },
   "summary": {
     "totalConfigurations": 1460,
-    "healthyConfigurations": 1162,
+    "healthyConfigurations": 1186,
     "failedSyntax": 11,
     "failedDecode": 0,
     "failedRequiredFields": 0,
     "failedDNS": 13,
-    "failedTCP": 274,
-    "healthRate": "79.59%"
+    "failedTCP": 250,
+    "healthRate": "81.23%"
   },
-  "executionTimeMs": 18484,
-  "generatedAt": "2026-06-09T13:37:17.262Z"
+  "executionTimeMs": 13425,
+  "generatedAt": "2026-06-09T13:40:07.376Z"
 }
