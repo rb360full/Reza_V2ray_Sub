@@ -1,4 +1,4 @@
-#profile-title: Reza-4
+#profile-title: Reza-4-mobile
 #profile-update-interval: 8
 #subscription-userinfo: upload=0; download=0; total=10737418240000000; expire=2546249531
 #support-url: https://github.com/rb360full/Reza_V2ray_Sub
