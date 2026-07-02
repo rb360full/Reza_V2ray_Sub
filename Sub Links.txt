@@ -34,3 +34,4 @@ https://raw.githubusercontent.com/mahsanet/MahsaFreeConfig/refs/heads/main/mtn/s
 https://raw.githubusercontent.com/mahsanet/MahsaFreeConfig/refs/heads/main/mtn/sub_4.txt
 https://gitverse.ru/api/repos/ru-wbl/wl/raw/branch/master/KvRuVPN%2FKvRuVPN.txt
 https://raw.githubusercontent.com/luxxuria/harvester/main/ping_tested.txt
+https://raw.githubusercontent.com/roosterkid/openproxylist/main/V2RAY_BASE64.txt
