@@ -1,9 +1,9 @@
 {
   "localFilesCount": 1,
   "remoteUrlsCount": 31,
-  "totalImportedLines": 2569,
-  "uniqueLines": 2488,
-  "duplicateLinesRemoved": 25,
-  "executionTimeMs": 3123,
-  "generatedAt": "2026-09-07T14:01:33.488Z"
+  "totalImportedLines": 2332,
+  "uniqueLines": 2252,
+  "duplicateLinesRemoved": 24,
+  "executionTimeMs": 2028,
+  "generatedAt": "2026-09-07T19:37:40.285Z"
 }
