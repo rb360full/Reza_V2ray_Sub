@@ -2,35 +2,35 @@
   "validationStages": {
     "stage1_syntax": {
       "name": "Syntax Validation",
-      "passed": 3973
+      "passed": 2392
     },
     "stage2_decode": {
       "name": "Decode Validation",
-      "passed": 3973
+      "passed": 2392
     },
     "stage3_required_fields": {
       "name": "Required Fields Validation",
-      "passed": 3973
+      "passed": 2392
     },
     "stage4_dns": {
       "name": "DNS Validation",
-      "passed": 3856
+      "passed": 2272
     },
     "stage5_tcp": {
       "name": "TCP Validation",
-      "passed": 2876
+      "passed": 1314
     }
   },
   "summary": {
-    "totalConfigurations": 3996,
-    "healthyConfigurations": 2876,
-    "failedSyntax": 23,
+    "totalConfigurations": 2406,
+    "healthyConfigurations": 1314,
+    "failedSyntax": 14,
     "failedDecode": 0,
     "failedRequiredFields": 0,
-    "failedDNS": 117,
-    "failedTCP": 980,
-    "healthRate": "71.97%"
+    "failedDNS": 120,
+    "failedTCP": 958,
+    "healthRate": "54.61%"
   },
-  "executionTimeMs": 52272,
-  "generatedAt": "2026-09-10T03:26:35.197Z"
+  "executionTimeMs": 49359,
+  "generatedAt": "2026-09-10T12:45:11.548Z"
 }
